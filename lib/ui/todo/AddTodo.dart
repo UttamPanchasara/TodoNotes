@@ -1,7 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:intl/intl.dart';
 import 'package:todo/database/data/Todo.dart';
 import 'package:todo/database/data/TodoProvider.dart';
+import 'package:todo/utils/AppSingleton.dart';
 
 class AddTodo extends StatefulWidget {
   AddTodo({Key key, this.todoId}) : super(key: key);
@@ -13,6 +17,8 @@ class AddTodo extends StatefulWidget {
 }
 
 class _AddTodoState extends State<AddTodo> {
+  var selectedColorIndex = 0;
+
   List<Color> colorsList = [
     Colors.grey,
     Colors.green,
@@ -29,14 +35,13 @@ class _AddTodoState extends State<AddTodo> {
     Colors.pinkAccent
   ];
 
-  Color _selectedColor = Colors.grey;
+  Color selectedColor = Colors.grey;
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  var _selectedColorIndex = 0;
+  GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   var _descriptionFocusNode = FocusNode();
-  GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   Todo _todo;
   TodoProvider _todoProvider = TodoProvider();
@@ -55,11 +60,16 @@ class _AddTodoState extends State<AddTodo> {
     if (widget.todoId != 0) {
       _todoProvider.getTodo(widget.todoId).then((todo) {
         _todo = todo;
-        _selectedColor = Color(int.parse(_todo.color));
+        selectedColor = Color(_todo.color);
         _titleController.text = _todo.title;
-        _descriptionController.text = _todo.title;
+        _descriptionController.text = _todo.description;
 
-        _selectedColorIndex = colorsList.indexOf(_selectedColor);
+        for (var i = 0; i < colorsList.length; i++) {
+          if (colorsList[i].value == _todo.color) {
+            selectedColorIndex = i;
+            break;
+          }
+        }
 
         setState(() {});
       }).catchError((error) {
@@ -79,22 +89,23 @@ class _AddTodoState extends State<AddTodo> {
         elevation: 0,
         automaticallyImplyLeading: true,
         iconTheme: IconThemeData(
-          color: _selectedColor,
+          color: selectedColor,
         ),
         actions: <Widget>[
           GestureDetector(
             onTap: () {
               _addTodo(_titleController.text, _descriptionController.text,
-                  colorsList[_selectedColorIndex].value.toString());
+                  colorsList[selectedColorIndex].value);
             },
             child: Container(
               margin: EdgeInsets.all(10),
               child: Icon(
                 Icons.done,
-                color: _selectedColor,
+                color: selectedColor,
               ),
             ),
-          )
+          ),
+          deleteOption()
         ],
       ),
       body: Column(
@@ -111,24 +122,24 @@ class _AddTodoState extends State<AddTodo> {
                       maxLines: 1,
                       textInputAction: TextInputAction.next,
                       keyboardType: TextInputType.text,
-                      textCapitalization: TextCapitalization.words,
+                      textCapitalization: TextCapitalization.sentences,
                       decoration: InputDecoration(
                         hintText: "Title",
                         hintStyle:
-                            TextStyle(color: Colors.black38, fontSize: 18),
+                            TextStyle(color: Colors.black38, fontSize: 16),
                         contentPadding: EdgeInsets.only(
                             left: 10, right: 10, top: 15, bottom: 15),
                         border: OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: _selectedColor, width: 1.0),
+                              BorderSide(color: selectedColor, width: 1.5),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: _selectedColor, width: 1.0),
+                              BorderSide(color: selectedColor, width: 2.0),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: _selectedColor, width: 1.0),
+                              BorderSide(color: selectedColor, width: 1.5),
                         ),
                       ),
                       cursorColor: Colors.black,
@@ -136,7 +147,11 @@ class _AddTodoState extends State<AddTodo> {
                         FocusScope.of(context)
                             .requestFocus(_descriptionFocusNode);
                       },
-                      style: TextStyle(color: Colors.black, fontSize: 18),
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontFamily: 'Oswald_Regular',
+                      ),
                     ),
                   ),
                   Container(
@@ -147,39 +162,82 @@ class _AddTodoState extends State<AddTodo> {
                       maxLines: null,
                       textInputAction: TextInputAction.newline,
                       keyboardType: TextInputType.text,
-                      textCapitalization: TextCapitalization.words,
+                      textCapitalization: TextCapitalization.sentences,
                       focusNode: _descriptionFocusNode,
                       decoration: InputDecoration(
                         hintText: "Description",
                         hintStyle:
-                            TextStyle(color: Colors.black38, fontSize: 18),
+                            TextStyle(color: Colors.black38, fontSize: 16),
                         contentPadding: EdgeInsets.only(
                             left: 10, right: 10, top: 15, bottom: 15),
                         border: OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: _selectedColor, width: 1.0),
+                              BorderSide(color: selectedColor, width: 1.5),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: _selectedColor, width: 1.0),
+                              BorderSide(color: selectedColor, width: 2.0),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderSide:
-                              BorderSide(color: _selectedColor, width: 1.0),
+                              BorderSide(color: selectedColor, width: 1.5),
                         ),
                       ),
                       cursorColor: Colors.black,
-                      style: TextStyle(color: Colors.black, fontSize: 18),
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontFamily: 'Oswald_Regular',
+                      ),
                     ),
                   )
                 ],
               ),
             ),
           ),
+          _showEditedDate(),
           colorsListWidget()
         ],
       ),
     );
+  }
+
+  Widget _showEditedDate() {
+    if (_todo == null) {
+      return Container();
+    } else {
+      return Container(
+        padding: EdgeInsets.only(left: 10, right: 10, bottom: 10),
+        child: Text(
+          "Edited " +
+              DateFormat('dd-MMM-yyyy, hh:mm:aa').format(
+                DateTime.fromMillisecondsSinceEpoch(_todo.createdAt),
+              ),
+          textAlign: TextAlign.end,
+          style: TextStyle(
+              color: selectedColor, fontFamily: 'Oswald_Regular', fontSize: 12),
+        ),
+      );
+    }
+  }
+
+  Widget deleteOption() {
+    if (widget.todoId == 0) {
+      return Container();
+    } else {
+      return GestureDetector(
+        onTap: () {
+          _deleteTodo();
+        },
+        child: Container(
+          margin: EdgeInsets.all(10),
+          child: Icon(
+            Icons.delete_outline,
+            color: selectedColor,
+          ),
+        ),
+      );
+    }
   }
 
   Widget colorsListWidget() {
@@ -192,8 +250,8 @@ class _AddTodoState extends State<AddTodo> {
         itemBuilder: (context, index) {
           return GestureDetector(
             onTap: () {
-              _selectedColor = colorsList[index];
-              _selectedColorIndex = index;
+              selectedColor = colorsList[index];
+              selectedColorIndex = index;
               setState(() {});
             },
             child: colorWidget(index, colorsList[index]),
@@ -205,7 +263,7 @@ class _AddTodoState extends State<AddTodo> {
   }
 
   Widget colorWidget(int index, Color color) {
-    if (index == _selectedColorIndex) {
+    if (index == selectedColorIndex) {
       return Container(
         margin: EdgeInsets.all(5),
         child: Stack(
@@ -240,62 +298,83 @@ class _AddTodoState extends State<AddTodo> {
     }
   }
 
-  void _addTodo(String title, String description, String color) {
+  void _addTodo(String title, String description, int color) {
     if (_descriptionController.text.isEmpty) {
-      _showMessage("Please provide description", Colors.red);
+      AppSingleton.instance
+          .showMessage("Please provide description", Colors.red, _scaffoldKey);
       return;
     }
 
     if (_todoProvider != null) {
-      var todo = Todo(
-        title: title,
-        description: description,
-        color: color,
-        createdAt: DateTime.now().toLocal().millisecondsSinceEpoch.toString(),
-      );
-
       if (widget.todoId == 0) {
-        _todoProvider.insert(todo).then(
+        _todoProvider
+            .insert(Todo(
+          title: title,
+          description: description,
+          color: color,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        ))
+            .then(
           (value) {
             _resetFields();
-            _showMessage("Todo was created successfully.", Colors.green);
+            Navigator.pop(context, "Note was created successfully.");
           },
         ).catchError(
           (error) {
             print('error while inserting todo: ' + error.toString());
-            _showMessage("Something wrong, please try again.", Colors.red);
+            AppSingleton.instance.showMessage(
+                "Something wrong, please try again.", Colors.red, _scaffoldKey);
           },
         );
       } else {
-        _todoProvider.update(todo).then(
+        _todoProvider
+            .update(Todo(
+          id: widget.todoId,
+          title: title,
+          description: description,
+          color: color,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        ))
+            .then(
           (value) {
             _resetFields();
-            _showMessage("Todo was updated successfully.", Colors.green);
+            Navigator.pop(context, "Note was updated successfully.");
           },
         ).catchError(
           (error) {
             print('error while inserting todo: ' + error.toString());
-            _showMessage("Something wrong, please try again.", Colors.red);
+            AppSingleton.instance.showMessage(
+                "Something wrong, please try again.", Colors.red, _scaffoldKey);
           },
         );
       }
     }
   }
 
-  void _resetFields(){
-    _titleController.text = "";
-    _descriptionController.text = "";
-    _selectedColor = Colors.grey;
-    _selectedColorIndex = colorsList.indexOf(_selectedColor);
-    setState(() {
-    });
+  void _deleteTodo() {
+    if (_todoProvider != null) {
+      if (widget.todoId > 0) {
+        _todoProvider.delete(widget.todoId).then(
+          (value) {
+            _resetFields();
+            Navigator.pop(context, "Note was deleted successfully.");
+          },
+        ).catchError(
+          (error) {
+            print('error while deleting todo: ' + error.toString());
+            AppSingleton.instance.showMessage(
+                "Something wrong, please try again.", Colors.red, _scaffoldKey);
+          },
+        );
+      }
+    }
   }
 
-  void _showMessage(String message, Color color) {
-    final snackBar = SnackBar(
-      content: Text(message),
-      backgroundColor: color,
-    );
-    _scaffoldKey.currentState.showSnackBar(snackBar);
+  void _resetFields() {
+    _titleController.text = "";
+    _descriptionController.text = "";
+    selectedColor = Colors.grey;
+    selectedColorIndex = colorsList.indexOf(selectedColor);
+    setState(() {});
   }
 }

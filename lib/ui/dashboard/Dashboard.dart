@@ -1,7 +1,12 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:intl/intl.dart';
+import 'package:todo/database/data/Todo.dart';
 import 'package:todo/database/data/TodoProvider.dart';
 import 'package:todo/ui/todo/AddTodo.dart';
+import 'package:todo/utils/AppSingleton.dart';
 
 class Dashboard extends StatefulWidget {
   @override
@@ -10,24 +15,25 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   TodoProvider _todoProvider = TodoProvider();
+  GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: Colors.white,
-      body: Center(
-        child: Text("Dashboard"),
-      ),
+      body: _todoList(),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        title: Text(
+          "Quick Notes",
+          style: TextStyle(color: Colors.black, fontFamily: 'Oswald_Bold'),
+        ),
         actions: <Widget>[
           GestureDetector(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AddTodo(todoId: 0)),
-              );
+              _navigateToAddTodo(0);
             },
             child: Container(
               margin: EdgeInsets.all(10),
@@ -46,27 +52,115 @@ class _DashboardState extends State<Dashboard> {
     return FutureBuilder(
       future: _todoProvider.getAllTodo(),
       builder: (_, snapshot) {
-        if (snapshot.error) {
-          return Container();
-        } else {
-          return StaggeredGridView.countBuilder(
-            crossAxisCount: 2,
-            itemCount: snapshot.data,
-            itemBuilder: (BuildContext context, int index) => new Container(
-                color: Colors.green,
-                child: new Center(
-                  child: new CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: new Text('$index'),
-                  ),
-                )),
-            staggeredTileBuilder: (int index) =>
-                new StaggeredTile.count(2, index.isEven ? 2 : 1),
-            mainAxisSpacing: 4.0,
-            crossAxisSpacing: 4.0,
+        if (snapshot.hasError) {
+          print("Error while fetchin months: " + snapshot.error);
+          return Center(
+            child: Text(
+              "You don't have any notes yet, \nPlease add some.",
+              style: TextStyle(color: Colors.grey, fontFamily: 'Oswald_Bold'),
+              textAlign: TextAlign.center,
+            ),
           );
+        } else {
+          switch (snapshot.connectionState) {
+            case ConnectionState.waiting:
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            default:
+              return _loadTodo(snapshot.data);
+          }
         }
       },
     );
+  }
+
+  Widget _loadTodo(List<Todo> data) {
+    if (data.length == 0) {
+      return Center(
+        child: Text(
+          "You don't have any notes yet, \nPlease add some.",
+          style: TextStyle(
+            color: Colors.grey,
+            fontFamily: 'Oswald_Bold',
+          ),
+          textAlign: TextAlign.center,
+        ),
+      );
+    } else {
+      return Container(
+        margin: EdgeInsets.all(5),
+        child: StaggeredGridView.countBuilder(
+          crossAxisCount: 4,
+          itemCount: data.length,
+          itemBuilder: (BuildContext context, int index) {
+            Todo _todo = data[index];
+            return InkWell(
+              onTap: () {
+                _navigateToAddTodo(_todo.id);
+              },
+              child: Container(
+                margin: EdgeInsets.all(5),
+                child: Column(
+                  children: <Widget>[
+                    _showTitle(_todo),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        _todo.description,
+                        style: TextStyle(
+                            color: Colors.grey,
+                            fontFamily: 'Oswald_Regular',
+                            fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Color(_todo.color), width: 2),
+                ),
+              ),
+            );
+          },
+          staggeredTileBuilder: (int index) => StaggeredTile.fit(2),
+          mainAxisSpacing: 0,
+          crossAxisSpacing: 0,
+        ),
+      );
+    }
+  }
+
+  Widget _showTitle(Todo _todo){
+    if(_todo.title.isEmpty){
+      return Container();
+    }else{
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.only(left: 10, right: 10, top: 10),
+        child: Text(
+          _todo.title,
+          textAlign: TextAlign.start,
+          style: TextStyle(
+              color: Colors.black,
+              fontFamily: 'Oswald_Bold',
+              fontSize: 16),
+        ),
+      );
+    }
+  }
+
+
+  Future _navigateToAddTodo(int todoId) async {
+    // start the SecondScreen and wait for it to finish with a result
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddTodo(todoId: todoId)),
+    );
+
+    if (result != null) {
+      // after the SecondScreen result comes back update the Text widget with it
+      AppSingleton.instance.showMessage(result, Colors.green, _scaffoldKey);
+    }
   }
 }

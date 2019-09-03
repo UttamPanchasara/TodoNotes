@@ -11,8 +11,8 @@ class Tables {
       Todo.columnDescription +
       " TEXT, " +
       Todo.columnCreatedAt +
-      " TEXT, " +
+      " INTEGER, " +
       Todo.columnColor +
-      " TEXT " +
+      " INTEGER " +
       ")";
 }

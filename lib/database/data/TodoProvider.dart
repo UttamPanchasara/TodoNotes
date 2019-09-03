@@ -29,7 +29,9 @@ class TodoProvider {
   }
 
   Future<List<Todo>> getAllTodo() async {
-    var res = await DBHelper.dbHelper.getDatabase().query(Todo.TABLE_NAME);
+    var res = await DBHelper.dbHelper
+        .getDatabase()
+        .query(Todo.TABLE_NAME, orderBy: Todo.columnCreatedAt + " DESC");
     List<Todo> list =
         res.isNotEmpty ? res.map((c) => Todo.fromMap(c)).toList() : [];
     return list;

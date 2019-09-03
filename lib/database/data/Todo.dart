@@ -10,8 +10,8 @@ class Todo {
   int id;
   String title;
   String description;
-  String createdAt;
-  String color;
+  int createdAt;
+  int color;
 
   Todo({this.id, this.title, this.description, this.createdAt, this.color});
 
