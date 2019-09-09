@@ -55,4 +55,8 @@ class _MyHomePageState extends State<MyHomePage> implements BaseView {
   void onDBCreated() {
     createTables();
   }
+
+  @override
+  void onError(String message) {
+  }
 }

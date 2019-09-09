@@ -18,7 +18,8 @@ class TodoProvider {
               Todo.columnTitle,
               Todo.columnDescription,
               Todo.columnCreatedAt,
-              Todo.columnColor
+              Todo.columnColor,
+              Todo.columnPassword
             ],
             where: '${Todo.columnId} = ?',
             whereArgs: [id]);
@@ -46,5 +47,18 @@ class TodoProvider {
     return await DBHelper.dbHelper.getDatabase().update(
         Todo.TABLE_NAME, todo.toMap(),
         where: '${Todo.columnId} = ?', whereArgs: [todo.id]);
+  }
+
+  Future<int> updatePassword(String password, int todoId) async {
+    return await DBHelper.dbHelper.getDatabase().rawUpdate("UPDATE " +
+        Todo.TABLE_NAME +
+        " SET " +
+        Todo.columnPassword +
+        " = '" +
+        password +
+        "' WHERE " +
+        Todo.columnId +
+        " = " +
+        todoId.toString());
   }
 }

@@ -10,6 +10,8 @@ class Tables {
       " TEXT, " +
       Todo.columnDescription +
       " TEXT, " +
+      Todo.columnPassword +
+      " TEXT, " +
       Todo.columnCreatedAt +
       " INTEGER, " +
       Todo.columnColor +

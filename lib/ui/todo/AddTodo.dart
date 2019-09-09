@@ -1,10 +1,10 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import 'package:todo/database/data/Todo.dart';
-import 'package:todo/database/data/TodoProvider.dart';
+import 'package:todo/ui/todo/AddTodoModel.dart';
+import 'package:todo/ui/todo/AddTodoView.dart';
+import 'package:todo/ui/todo/PasswordDialog.dart';
 import 'package:todo/utils/AppSingleton.dart';
 
 class AddTodo extends StatefulWidget {
@@ -16,7 +16,7 @@ class AddTodo extends StatefulWidget {
   _AddTodoState createState() => _AddTodoState();
 }
 
-class _AddTodoState extends State<AddTodo> {
+class _AddTodoState extends State<AddTodo> implements AddTodoView {
   var selectedColorIndex = 0;
 
   List<Color> colorsList = [
@@ -39,16 +39,18 @@ class _AddTodoState extends State<AddTodo> {
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+
   GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   var _descriptionFocusNode = FocusNode();
 
   Todo _todo;
-  TodoProvider _todoProvider = TodoProvider();
+  AddTodoModel _model;
 
   void initState() {
     super.initState();
     _todo = null;
+    _model = AddTodoModel(this);
 
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
@@ -58,24 +60,7 @@ class _AddTodoState extends State<AddTodo> {
 
   void onWidgetBuild() {
     if (widget.todoId != 0) {
-      _todoProvider.getTodo(widget.todoId).then((todo) {
-        _todo = todo;
-        selectedColor = Color(_todo.color);
-        _titleController.text = _todo.title;
-        _descriptionController.text = _todo.description;
-
-        for (var i = 0; i < colorsList.length; i++) {
-          if (colorsList[i].value == _todo.color) {
-            selectedColorIndex = i;
-            break;
-          }
-        }
-
-        setState(() {});
-      }).catchError((error) {
-        _todo = null;
-        print('error in reading expend detail: ' + error.toString());
-      });
+      _model.getTodo(widget.todoId);
     }
   }
 
@@ -94,8 +79,12 @@ class _AddTodoState extends State<AddTodo> {
         actions: <Widget>[
           GestureDetector(
             onTap: () {
-              _addTodo(_titleController.text, _descriptionController.text,
-                  colorsList[selectedColorIndex].value);
+              _model.addTodo(
+                  _titleController.text,
+                  _descriptionController.text,
+                  colorsList[selectedColorIndex].value,
+                  widget.todoId,
+                  _todo == null ? "" : _todo.password);
             },
             child: Container(
               margin: EdgeInsets.all(10),
@@ -105,7 +94,8 @@ class _AddTodoState extends State<AddTodo> {
               ),
             ),
           ),
-          deleteOption()
+          _deleteOption(),
+          _lockOption(context),
         ],
       ),
       body: Column(
@@ -221,18 +211,51 @@ class _AddTodoState extends State<AddTodo> {
     }
   }
 
-  Widget deleteOption() {
-    if (widget.todoId == 0) {
+  Widget _deleteOption() {
+    if (_todo == null) {
       return Container();
     } else {
       return GestureDetector(
         onTap: () {
-          _deleteTodo();
+          _model.deleteTodo(widget.todoId);
         },
         child: Container(
           margin: EdgeInsets.all(10),
           child: Icon(
             Icons.delete_outline,
+            color: selectedColor,
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _lockOption(BuildContext context) {
+    if (_todo == null) {
+      return Container();
+    } else {
+      return GestureDetector(
+        onTap: () {
+          if (_todo.password != null && _todo.password.isNotEmpty) {
+            showDialog(
+                context: context,
+                builder: (context) {
+                  return _showRemoveProtectedAlert();
+                });
+          } else {
+            showDialog(
+                context: context,
+                builder: (context) {
+                  return PasswordDialog(view: this);
+                });
+          }
+        },
+        child: Container(
+          margin: EdgeInsets.all(10),
+          child: Icon(
+            _todo != null && _todo.password != null && _todo.password.isNotEmpty
+                ? Icons.lock_open
+                : Icons.lock_outline,
             color: selectedColor,
           ),
         ),
@@ -298,83 +321,88 @@ class _AddTodoState extends State<AddTodo> {
     }
   }
 
-  void _addTodo(String title, String description, int color) {
-    if (_descriptionController.text.isEmpty) {
-      AppSingleton.instance
-          .showMessage("Please provide description", Colors.red, _scaffoldKey);
-      return;
-    }
-
-    if (_todoProvider != null) {
-      if (widget.todoId == 0) {
-        _todoProvider
-            .insert(Todo(
-          title: title,
-          description: description,
-          color: color,
-          createdAt: DateTime.now().millisecondsSinceEpoch,
-        ))
-            .then(
-          (value) {
-            _resetFields();
-            Navigator.pop(context, "Note was created successfully.");
+  _showRemoveProtectedAlert() {
+    return AlertDialog(
+      title: Text('Remove Protection?',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontFamily: 'Oswald_Bold',
+          )),
+      content: SingleChildScrollView(
+        child: Container(
+          width: double.maxFinite,
+          child: Text(
+            "Are you sure?",
+            style: TextStyle(
+              color: Colors.red,
+              fontFamily: 'Oswald_Regular',
+            ),
+          ),
+        ),
+      ),
+      actions: <Widget>[
+        FlatButton(
+          child: new Text('CANCEL',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontFamily: 'Oswald_Bold',
+              )),
+          onPressed: () {
+            Navigator.of(context).pop();
           },
-        ).catchError(
-          (error) {
-            print('error while inserting todo: ' + error.toString());
-            AppSingleton.instance.showMessage(
-                "Something wrong, please try again.", Colors.red, _scaffoldKey);
+        ),
+        FlatButton(
+          child: new Text('UN-PROTECT',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontFamily: 'Oswald_Bold',
+              )),
+          onPressed: () {
+            Navigator.of(context).pop();
+            _model.removePassword(_todo.id);
           },
-        );
-      } else {
-        _todoProvider
-            .update(Todo(
-          id: widget.todoId,
-          title: title,
-          description: description,
-          color: color,
-          createdAt: DateTime.now().millisecondsSinceEpoch,
-        ))
-            .then(
-          (value) {
-            _resetFields();
-            Navigator.pop(context, "Note was updated successfully.");
-          },
-        ).catchError(
-          (error) {
-            print('error while inserting todo: ' + error.toString());
-            AppSingleton.instance.showMessage(
-                "Something wrong, please try again.", Colors.red, _scaffoldKey);
-          },
-        );
-      }
-    }
+        )
+      ],
+    );
   }
 
-  void _deleteTodo() {
-    if (_todoProvider != null) {
-      if (widget.todoId > 0) {
-        _todoProvider.delete(widget.todoId).then(
-          (value) {
-            _resetFields();
-            Navigator.pop(context, "Note was deleted successfully.");
-          },
-        ).catchError(
-          (error) {
-            print('error while deleting todo: ' + error.toString());
-            AppSingleton.instance.showMessage(
-                "Something wrong, please try again.", Colors.red, _scaffoldKey);
-          },
-        );
-      }
-    }
+  @override
+  void onTodoUpdated(String message) {
+    Navigator.pop(context, message);
   }
 
-  void _resetFields() {
-    _titleController.text = "";
-    _descriptionController.text = "";
-    selectedColor = Colors.grey;
-    selectedColorIndex = colorsList.indexOf(selectedColor);
+  @override
+  void onDBCreated() {
+    // DO nothing
+  }
+
+  @override
+  void onError(String message) {
+    AppSingleton.instance.showMessage(message, Colors.red, _scaffoldKey);
+  }
+
+  @override
+  void onTodoAvailable(Todo todo) {
+    _todo = todo;
+    selectedColor = Color(_todo.color);
+    _titleController.text = _todo.title;
+    _descriptionController.text = _todo.description;
+
+    for (var i = 0; i < colorsList.length; i++) {
+      if (colorsList[i].value == _todo.color) {
+        selectedColorIndex = i;
+        break;
+      }
+    }
+
     setState(() {});
+  }
+
+  @override
+  void onPasswordValidate(String password) {
+    _model.addPassword(_todo, password);
   }
 }

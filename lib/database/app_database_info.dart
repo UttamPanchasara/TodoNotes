@@ -7,7 +7,7 @@ import 'imigration_task.dart';
 
 class AppDatabaseInfo implements DBInfo, IMigrationTask {
   static const String DATABASE_NAME = "db_expends.db";
-  static const int DATABASE_VERSION = 1;
+  static const int DATABASE_VERSION = 2;
 
   @override
   String getDatabaseName() {
