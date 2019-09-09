@@ -3,9 +3,9 @@
 A Todo Notes Application developed with flutter, with basic functionalities to write quick Notes.
 
 
-| NOTES |
-| -------------------------------- |
-| <img src="https://github.com/UttamPanchasara/TodoNotes/blob/master/gif/notes.png" height="400" alt="Screenshot"/> |
+| NOTES | PASSWORD-PROTECTED |
+| -------------------------------- | -------------------------------- |
+| <img src="https://github.com/UttamPanchasara/TodoNotes/blob/master/gif/notes.jpg" height="400" alt="Screenshot"/> | <img src="https://github.com/UttamPanchasara/TodoNotes/blob/master/gif/password_protection.png" height="400" alt="Screenshot"/> |
 
 | CREATE | UPDATE | DELETE |
 | -------------------------------- | --------------------------------- | --------------------------------- |
