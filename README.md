@@ -28,5 +28,5 @@ Always welcome to PR. :)
 
  # Donate
 > If you found this project helpful or you learned something from the source code and want to thank me, consider buying me a cup of :coffee:
-- Google Pay **(panchasarauttam@okaxis)**
+- Paypal **https://paypal.me/UttamPanchasara**
 
